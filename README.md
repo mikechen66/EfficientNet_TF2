@@ -1,8 +1,8 @@
 # EfficientNet_TF2
 
-The EfficientNet is effective to conduct the model scaling and balance network depth, width, 
-and resolution for the better performance. The reserchers uniformly scales all dimensions of 
-depth/width/resolution using a simple but highly effective compound coefficient. 
+The EfficientNet effectively conducts the model scaling and balance network depth, width, and 
+resolution for the better performance. The reserchers uniformly scales all dimensions by using 
+a simple but effective compound coefficient. 
 
 Based on the effectiveness of both MobileNets and ResNet, NasNet(neural architecture search) 
 is uded to design a new baseline network and scale it up to obtain a family of models, called 
