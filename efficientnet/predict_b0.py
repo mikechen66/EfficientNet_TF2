@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# predict_small.py
+# predict_b0.py
 
 """
 Please remember that it is the TensorFlow realization with image_data_foramt = 'channels_last'. If
@@ -9,7 +9,7 @@ the env of Keras is 'channels_first', please change it  according to the TensorF
 
 Please give the commands as follows. 
 
-$ python predict_small.py
+$ python predict_b0.py
 
 Make the the necessary changes to adapt to the environment of TensorFlow 2.3, Keras 2.4.3, CUDA Toolkit 
 11.0, cuDNN 8.0.1 and CUDA 450.57. In addition, write the new lines of code to replace the deprecated 
