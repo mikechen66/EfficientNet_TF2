@@ -470,6 +470,16 @@ def EfficientNetB7(include_top=True, weights='imagenet', input_tensor=None,
                         pooling=pooling, num_classes=num_classes, **kwargs)
 
 
+setattr(EfficientNetB0, '__doc__', EfficientNet.__doc__)
+setattr(EfficientNetB1, '__doc__', EfficientNet.__doc__)
+setattr(EfficientNetB2, '__doc__', EfficientNet.__doc__)
+setattr(EfficientNetB3, '__doc__', EfficientNet.__doc__)
+setattr(EfficientNetB4, '__doc__', EfficientNet.__doc__)
+setattr(EfficientNetB5, '__doc__', EfficientNet.__doc__)
+setattr(EfficientNetB6, '__doc__', EfficientNet.__doc__)
+setattr(EfficientNetB7, '__doc__', EfficientNet.__doc__)
+
+
 def preprocess_input(x):
     
     x = image.img_to_array(x)
@@ -481,24 +491,14 @@ def preprocess_input(x):
     return output
 
 
-setattr(EfficientNetB0, '__doc__', EfficientNet.__doc__)
-setattr(EfficientNetB1, '__doc__', EfficientNet.__doc__)
-setattr(EfficientNetB2, '__doc__', EfficientNet.__doc__)
-setattr(EfficientNetB3, '__doc__', EfficientNet.__doc__)
-setattr(EfficientNetB4, '__doc__', EfficientNet.__doc__)
-setattr(EfficientNetB5, '__doc__', EfficientNet.__doc__)
-setattr(EfficientNetB6, '__doc__', EfficientNet.__doc__)
-setattr(EfficientNetB7, '__doc__', EfficientNet.__doc__)
-
-
 if __name__ == '__main__':
 
-    model = EfficientNetB0(include_top=True, weights='imagenet')
+    model = EfficientNetB2(include_top=True, weights='imagenet')
     
     model.summary()
 
-    img_path = '/home/mic/Documents/keras_efficientnet/plane.jpg'
-    img = image.load_img(img_path, target_size=(224,224))
+    img_path = '/home/mike/Documents/keras_efficientnet/images/plane.jpg'
+    img = image.load_img(img_path, target_size=(260,260))
     output = preprocess_input(img)
     print('Input image shape:', output.shape)
 
