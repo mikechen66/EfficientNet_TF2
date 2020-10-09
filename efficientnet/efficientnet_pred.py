@@ -4,9 +4,23 @@
 # efficientnet_pred.py
 
 """
-Optionally loads weights pre-trained on ImageNet. Note that the data format 
-convention used by the model is the one specified in your Keras config at 
-`~/.keras/keras.json`.
+Optionally loads weights pre-trained on ImageNet. Note that the data format convention used by the model 
+is the one specified in your Keras config at `~/.keras/keras.json`.
+
+Model Characteristics
+The EfficientNet effectively conducts the model scaling and balance network depth, width, and resolution 
+for the better performance. The reserchers uniformly scales all dimensions by using a simple but effective 
+compound coefficient.
+
+EfficientNet B0~B7
+Based on the effectiveness of both MobileNets and ResNet, NasNet(neural architecture search) is uded to 
+design a new baseline network and scale it up to obtain a family of models, called EfficientNets B0-B7, 
+which achieve better accuracy and efficiency.
+
+Modifications
+Make the necessary changes to adapt to the environment of TensorFlow 2.3, Keras 2.4.3, CUDA Toolkit 11.0, 
+cuDNN 8.0.1 and CUDA 450.57. In addition, write the new lines of code to replace the deprecated code. I 
+would like to thank Francois Chollet and related creators and interptretors for their contributions.
 
 EfficientNet models for Keras.
 
@@ -151,16 +165,15 @@ def swish(x):
     if K.backend() == 'tensorflow':
         try:
             # Implement the memory-efficient gradient
-            return K.tf.nn.swish(x)
+            return tf.nn.swish(x)
         except AttributeError:
             pass
 
     return x * K.sigmoid(x)
 
 
-def block(inputs, activation_fn=swish, drop_rate=0., name='',
-          filters_in=32, filters_out=16, kernel_size=3, strides=1,
-          expand_ratio=1, se_ratio=0., id_skip=True):
+def block(inputs, activation_fn=swish, drop_rate=0., name='', filters_in=32, filters_out=16, 
+	      kernel_size=3, strides=1, expand_ratio=1, se_ratio=0., id_skip=True):
     # A mobile inverted residual block.
     """
     # Arguments
@@ -178,12 +191,12 @@ def block(inputs, activation_fn=swish, drop_rate=0., name='',
     # Returns
         output tensor for the block.
     """
-    bn_axis = 3 if K.image_data_format() == 'channels_last' else 1
+    bn_axis = -1 if K.image_data_format() == 'channels_last' else 1
 
     # Expansion phase
     filters = filters_in * expand_ratio
     if expand_ratio != 1:
-        x = Conv2D(filters, 1, padding='same', use_bias=False,
+        x = Conv2D(filters, kernel_size=(1,1), padding='same', use_bias=False,
                    kernel_initializer=CONV_KERNEL_INITIALIZER,
                    name=name + 'expand_conv')(inputs)
         x = BatchNormalization(axis=bn_axis, name=name+'expand_bn')(x)
@@ -207,25 +220,25 @@ def block(inputs, activation_fn=swish, drop_rate=0., name='',
         filters_se = max(1, int(filters_in*se_ratio))
         se = GlobalAveragePooling2D(name=name+'se_squeeze')(x)
 
-        if bn_axis == 1:
-            se = Reshape((filters,1,1), name=name+'se_reshape')(se)
+        if bn_axis == -1:
+        	se = Reshape((1,1,filters), name=name+'se_reshape')(se)
         else:
-            se = Reshape((1,1,filters), name=name+'se_reshape')(se)
+        	se = Reshape((filters,1,1), name=name+'se_reshape')(se)
 
-        se = Conv2D(filters_se,1,padding='same', activation=activation_fn,
+        se = Conv2D(filters_se, kernel_size=(1,1), padding='same', activation=activation_fn,
                     kernel_initializer=CONV_KERNEL_INITIALIZER, name=name+'se_reduce')(se)
-        se = Conv2D(filters, 1, padding='same', activation='sigmoid',
+        se = Conv2D(filters, kernel_size=(1,1), padding='same', activation='sigmoid',
                     kernel_initializer=CONV_KERNEL_INITIALIZER, name=name+'se_expand')(se)
 
         if K.backend() == 'theano':
             # For the Theano backend, make the excitation weights broadcastable explicitly. 
             se = Lambda(lambda x: K.pattern_broadcast(x, [True,True,True,False]),
-                        output_shape=lambda input_shape: input_shape,
+                        output_shape=lambda input_shape: input_shape, 
                         name=name+'se_broadcast')(se)
         x = multiply([x,se], name=name+'se_excite')
 
     # Output phase
-    x = Conv2D(filters_out, 1, padding='same', use_bias=False,
+    x = Conv2D(filters_out, kernel_size=(1,1), padding='same', use_bias=False,
                kernel_initializer=CONV_KERNEL_INITIALIZER, name=name+'project_conv')(x)
     x = BatchNormalization(axis=bn_axis, name=name+'project_bn')(x)
     if (id_skip is True and strides == 1 and filters_in == filters_out):
@@ -293,32 +306,34 @@ def EfficientNet(width_coefficient, depth_coefficient, default_size, dropout_rat
         else:
             img_input = input_tensor
 
-    bn_axis = 3 if K.image_data_format() == 'channels_last' else 1
+    bn_axis = -1 if K.image_data_format() == 'channels_last' else 1
 
     def round_filters(filters, divisor=depth_divisor):
-        """Round number of filters based on depth multiplier."""
+        # Round number of filters based on depth multiplier.
         filters *= width_coefficient
         new_filters = max(divisor, int(filters + divisor / 2) // divisor * divisor)
-        # Make sure the round-down does not go down by more than 10%.
+        # Ensure the round-down does not go down by more than 10%.
         if new_filters < 0.9 * filters:
             new_filters += divisor
+
         return int(new_filters)
 
     def round_repeats(repeats):
-        """Round number of repeats based on depth multiplier."""
+        # Round number of repeats based on depth multiplier.
+
         return int(math.ceil(depth_coefficient*repeats))
 
     # Build the stem
     x = img_input
     x = ZeroPadding2D(padding=correct_pad(K,x,3), name='stem_conv_pad')(x)
-    x = Conv2D(round_filters(32), 3, strides=2, padding='valid',use_bias=False,
+    x = Conv2D(round_filters(32), kernel_size=(3,3), strides=2, padding='valid', use_bias=False,
                kernel_initializer=CONV_KERNEL_INITIALIZER, name='stem_conv')(x)
     x = BatchNormalization(axis=bn_axis, name='stem_bn')(x)
     x = Activation(activation_fn, name='stem_activation')(x)
 
     # Build the blocks
     from copy import deepcopy
-    blocks_args = deepcopy(blocks_args)
+    blocks_args = deepcopy(blocks_args) # See the above blocks_args
 
     b = 0
     blocks = float(sum(args['repeats'] for args in blocks_args))
@@ -329,7 +344,7 @@ def EfficientNet(width_coefficient, depth_coefficient, default_size, dropout_rat
         args['filters_out'] = round_filters(args['filters_out'])
 
         for j in range(round_repeats(args.pop('repeats'))):
-            # The first block needs to take care of stride and filter size increase.
+            # The first block needs to take care of stride and filter size growth.
             if j > 0:
                 args['strides'] = 1
                 args['filters_in'] = args['filters_out']
@@ -338,7 +353,7 @@ def EfficientNet(width_coefficient, depth_coefficient, default_size, dropout_rat
             b += 1
 
     # Build the top
-    x = Conv2D(round_filters(1280), 1, padding='same', use_bias=False,
+    x = Conv2D(round_filters(1280), kernel_size=(1,1), padding='same', use_bias=False,
                kernel_initializer=CONV_KERNEL_INITIALIZER, name='top_conv')(x)
     x = BatchNormalization(axis=bn_axis, name='top_bn')(x)
     x = Activation(activation_fn, name='top_activation')(x)
@@ -478,11 +493,11 @@ setattr(EfficientNetB7, '__doc__', EfficientNet.__doc__)
 
 if __name__ == '__main__':
 
-    model = EfficientNetB5(include_top=True, weights='imagenet')
+    model = EfficientNetB0(include_top=True, weights='imagenet')
     
     model.summary()
 
-    img_path = '/home/mike/Documents/keras_efficientnet/plane.jpg'
+    img_path = '/home/mic/Documents/keras_efficientnet/plane.jpg'
     img = image.load_img(img_path, target_size=(224,224))
     output = preprocess_input(img)
     print('Input image shape:', output.shape)
