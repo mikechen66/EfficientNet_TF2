@@ -47,7 +47,7 @@ if __name__ == '__main__':
     model.summary()
 
     img_path = '/home/mike/Documents/keras_efficientnet/plane.jpg'
-    img = image.load_img(img_path, target_size=(224,224))
+    img = image.load_img(img_path, target_size=(600,600))
     output = preprocess_input(img)
     print('Input image shape:', output.shape)
 
